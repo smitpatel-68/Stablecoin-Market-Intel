@@ -1,3 +1,7 @@
+-- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
+-- Copy one query at a time (from one comment header to the next).
+-- Dune does not support multiple statements in a single execution.
+
 -- Stablecoin Peg Deviation Tracker
 -- Monitors USDC, USDT, DAI, PYUSD price vs $1.00 peg using DEX data
 -- Flags deviations > 10bps (0.1%)

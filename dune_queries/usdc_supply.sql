@@ -1,3 +1,7 @@
+-- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
+-- Copy one query at a time (from one comment header to the next).
+-- Dune does not support multiple statements in a single execution.
+
 -- USDC Supply by Chain — Last 12 Months (Daily)
 -- Tracks USDC (Circle) circulating supply across major chains
 -- Use on Dune Analytics: https://dune.com

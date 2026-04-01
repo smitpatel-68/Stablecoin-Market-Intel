@@ -1,3 +1,7 @@
+-- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
+-- Copy one query at a time (from one comment header to the next).
+-- Dune does not support multiple statements in a single execution.
+
 -- Stablecoin Adoption Signals — PSP, Card Network, and Settlement Platform Tracking
 -- Monitors on-chain activity from known institutional wallets
 -- Supplements manual tracking of partnerships and announcements

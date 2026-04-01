@@ -1,3 +1,7 @@
+-- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
+-- Copy one query at a time (from one comment header to the next).
+-- Dune does not support multiple statements in a single execution.
+
 -- Whale Concentration Analysis — USDC & USDT
 -- Tracks concentration risk: how much supply is held by top wallets
 -- Key metric for Circle's reserve/distribution risk monitoring
