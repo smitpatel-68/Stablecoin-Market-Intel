@@ -1,74 +1,50 @@
 -- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
--- Copy one query at a time (from one comment header to the next).
--- Dune does not support multiple statements in a single execution.
+-- Table: stablecoins_multichain.balances
 
--- Stablecoin Market Share & Dominance Tracker
--- Tracks USDC vs USDT market share shifts over time
--- Core metric for Circle competitive intelligence
-
--- Query 1: Weekly market share — USDC vs USDT vs Others (last 12 months)
--- Uses Dune's stablecoin dataset (launched March 2026)
+-- Query 1: Top stablecoins by total supply (market share / dominance)
+-- Visualization: Pie chart or Bar chart | token_symbol vs supply_usd
 SELECT
-    date_trunc('week', day) AS week,
-    SUM(CASE WHEN symbol = 'USDT' THEN circulating_usd ELSE 0 END) AS usdt_supply,
-    SUM(CASE WHEN symbol = 'USDC' THEN circulating_usd ELSE 0 END) AS usdc_supply,
-    SUM(CASE WHEN symbol NOT IN ('USDT', 'USDC') THEN circulating_usd ELSE 0 END) AS other_supply,
-    SUM(circulating_usd) AS total_supply,
-    -- Dominance percentages
-    SUM(CASE WHEN symbol = 'USDT' THEN circulating_usd ELSE 0 END) * 100.0
-        / NULLIF(SUM(circulating_usd), 0) AS usdt_dominance_pct,
-    SUM(CASE WHEN symbol = 'USDC' THEN circulating_usd ELSE 0 END) * 100.0
-        / NULLIF(SUM(circulating_usd), 0) AS usdc_dominance_pct
-FROM stablecoin.daily_supply
-WHERE day >= NOW() - INTERVAL '365' DAY
+    token_symbol,
+    ROUND(SUM(balance_usd), 0) AS supply_usd,
+    ROUND(SUM(balance_usd) * 100.0 / SUM(SUM(balance_usd)) OVER (), 2) AS dominance_pct
+FROM stablecoins_multichain.balances
+WHERE token_symbol IN ('USDC', 'USDT', 'DAI', 'USDe', 'USDS', 'PYUSD', 'FDUSD')
+    AND balance_usd > 0
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
 GROUP BY 1
-ORDER BY 1;
+ORDER BY 2 DESC
 
--- Query 2: USDC chain migration — where is USDC growing fastest?
--- Compares current vs 90-day-ago distribution
-WITH current_dist AS (
-    SELECT
-        blockchain,
-        SUM(balance_usd) AS current_supply
-    FROM stablecoin.balances
-    WHERE symbol = 'USDC'
-        AND balance_usd > 0
-    GROUP BY 1
-),
-old_dist AS (
-    SELECT
-        blockchain,
-        SUM(circulating_usd) AS supply_90d_ago
-    FROM stablecoin.daily_supply
-    WHERE symbol = 'USDC'
-        AND day = date_trunc('day', NOW() - INTERVAL '90' DAY)
-    GROUP BY 1
-)
+-- Query 2: USDC vs USDT — total supply and holder comparison
+-- Visualization: Table or grouped bar chart
 SELECT
-    c.blockchain,
-    c.current_supply,
-    o.supply_90d_ago,
-    c.current_supply - COALESCE(o.supply_90d_ago, 0) AS absolute_change,
+    token_symbol,
+    ROUND(SUM(balance_usd), 0) AS total_supply_usd,
+    COUNT(DISTINCT blockchain) AS num_chains,
+    COUNT(DISTINCT address) AS holders
+FROM stablecoins_multichain.balances
+WHERE token_symbol IN ('USDC', 'USDT')
+    AND balance_usd > 0
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
+GROUP BY 1
+ORDER BY 2 DESC
+
+-- Query 3: USDC vs USDT dominance per chain (who wins where?)
+-- Visualization: Table with conditional formatting
+SELECT
+    blockchain,
+    ROUND(SUM(CASE WHEN token_symbol = 'USDC' THEN balance_usd ELSE 0 END), 0) AS usdc_supply,
+    ROUND(SUM(CASE WHEN token_symbol = 'USDT' THEN balance_usd ELSE 0 END), 0) AS usdt_supply,
     CASE
-        WHEN o.supply_90d_ago > 0 THEN (c.current_supply - o.supply_90d_ago) / o.supply_90d_ago * 100
-        ELSE NULL
-    END AS pct_change_90d
-FROM current_dist c
-LEFT JOIN old_dist o ON c.blockchain = o.blockchain
-WHERE c.current_supply > 10000000  -- >$10M
-ORDER BY absolute_change DESC;
-
--- Query 3: USDT vs USDC by use case (DEX volume vs transfers)
--- Approximation: DEX trading volume suggests speculative use,
--- transfer volume suggests payment/settlement use
-SELECT
-    date_trunc('week', block_time) AS week,
-    -- DEX volume (speculative/trading)
-    SUM(CASE WHEN token_bought_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 OR token_sold_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 THEN amount_usd ELSE 0 END) AS usdc_dex_volume,
-    SUM(CASE WHEN token_bought_address = 0xdAC17F958D2ee523a2206206994597C13D831ec7 OR token_sold_address = 0xdAC17F958D2ee523a2206206994597C13D831ec7 THEN amount_usd ELSE 0 END) AS usdt_dex_volume
-FROM dex.trades
-WHERE blockchain = 'ethereum'
-    AND block_time >= NOW() - INTERVAL '90' DAY
-    AND amount_usd > 100
+        WHEN SUM(CASE WHEN token_symbol = 'USDC' THEN balance_usd ELSE 0 END) >
+             SUM(CASE WHEN token_symbol = 'USDT' THEN balance_usd ELSE 0 END)
+        THEN 'USDC dominant'
+        ELSE 'USDT dominant'
+    END AS dominant
+FROM stablecoins_multichain.balances
+WHERE token_symbol IN ('USDC', 'USDT')
+    AND balance_usd > 0
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
 GROUP BY 1
-ORDER BY 1;
+HAVING SUM(balance_usd) > 1000000
+ORDER BY usdc_supply + usdt_supply DESC
+LIMIT 15

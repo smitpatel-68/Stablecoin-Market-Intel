@@ -1,47 +1,56 @@
 -- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
--- Copy one query at a time (from one comment header to the next).
--- Dune does not support multiple statements in a single execution.
+-- Table: stablecoins_multichain.balances | stablecoins_multichain.transfers
 
--- USDC Supply by Chain — Last 12 Months (Daily)
--- Tracks USDC (Circle) circulating supply across major chains
--- Use on Dune Analytics: https://dune.com
--- Table: dune.stablecoin.stablecoin_balances (Dune's new stablecoin dataset, March 2026)
--- Alternative: tokens.erc20_supply for Ethereum/EVM chains
-
--- Query 1: USDC total supply over time (Ethereum)
+-- Query 1: Total USDC supply across ALL chains
 SELECT
-    date_trunc('day', block_time) AS day,
-    SUM(balance) / 1e6 AS usdc_supply_usd  -- USDC has 6 decimals
-FROM tokens.erc20_daily_balances
-WHERE token_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  -- USDC on Ethereum
-    AND block_time >= NOW() - INTERVAL '365' DAY
-GROUP BY 1
-ORDER BY 1;
+    ROUND(SUM(balance_usd), 0) AS total_usdc_supply_usd
+FROM stablecoins_multichain.balances
+WHERE token_symbol = 'USDC'
+    AND balance_usd > 0
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
 
--- Query 2: USDC supply breakdown by chain (latest snapshot)
--- Uses Dune's cross-chain stablecoin dataset
+-- Query 2: USDC supply by chain (top 15)
+-- Visualization: Bar chart | X: blockchain, Y: usdc_supply_usd
 SELECT
     blockchain,
-    symbol,
-    SUM(balance_usd) AS total_supply_usd,
-    COUNT(DISTINCT address) AS unique_holders
-FROM stablecoin.balances
-WHERE symbol = 'USDC'
+    ROUND(SUM(balance_usd), 0) AS usdc_supply_usd,
+    COUNT(DISTINCT address) AS holders
+FROM stablecoins_multichain.balances
+WHERE token_symbol = 'USDC'
     AND balance_usd > 0
-GROUP BY 1, 2
-ORDER BY total_supply_usd DESC;
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 15
 
--- Query 3: USDC daily mint/burn on Ethereum
--- Mints = transfers FROM the zero address
--- Burns = transfers TO the zero address
+-- Query 3: USDC supply trend on Ethereum (daily, last 90 days)
+-- Visualization: Line chart | X: day, Y: usdc_supply_usd
+SELECT
+    day,
+    ROUND(SUM(balance_usd), 0) AS usdc_supply_usd
+FROM stablecoins_multichain.balances
+WHERE blockchain = 'ethereum'
+    AND token_symbol = 'USDC'
+    AND balance_usd > 0
+    AND day >= CURRENT_DATE - INTERVAL '90' DAY
+GROUP BY 1
+ORDER BY 1
+
+-- Query 4: USDC mint/burn on Ethereum (last 30 days)
+-- Mints = from zero address | Burns = to zero address
+-- Visualization: Bar chart | X: day, Y: net_flow_usd
 SELECT
     date_trunc('day', block_time) AS day,
-    SUM(CASE WHEN "from" = 0x0000000000000000000000000000000000000000 THEN value / 1e6 ELSE 0 END) AS minted_usd,
-    SUM(CASE WHEN "to" = 0x0000000000000000000000000000000000000000 THEN value / 1e6 ELSE 0 END) AS burned_usd,
-    SUM(CASE WHEN "from" = 0x0000000000000000000000000000000000000000 THEN value / 1e6 ELSE 0 END)
-    - SUM(CASE WHEN "to" = 0x0000000000000000000000000000000000000000 THEN value / 1e6 ELSE 0 END) AS net_change_usd
-FROM erc20_ethereum.evt_Transfer
-WHERE contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-    AND block_time >= NOW() - INTERVAL '90' DAY
+    ROUND(SUM(CASE WHEN "from" = 0x0000000000000000000000000000000000000000 THEN amount_usd ELSE 0 END), 0) AS minted_usd,
+    ROUND(SUM(CASE WHEN "to" = 0x0000000000000000000000000000000000000000 THEN amount_usd ELSE 0 END), 0) AS burned_usd,
+    ROUND(SUM(CASE
+        WHEN "from" = 0x0000000000000000000000000000000000000000 THEN amount_usd
+        WHEN "to" = 0x0000000000000000000000000000000000000000 THEN -amount_usd
+        ELSE 0
+    END), 0) AS net_flow_usd
+FROM stablecoins_multichain.transfers
+WHERE blockchain = 'ethereum'
+    AND token_symbol = 'USDC'
+    AND block_time >= CURRENT_DATE - INTERVAL '30' DAY
 GROUP BY 1
-ORDER BY 1;
+ORDER BY 1

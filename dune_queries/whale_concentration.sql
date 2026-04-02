@@ -1,82 +1,64 @@
 -- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
--- Copy one query at a time (from one comment header to the next).
--- Dune does not support multiple statements in a single execution.
+-- Table: stablecoins_multichain.balances
 
--- Whale Concentration Analysis — USDC & USDT
--- Tracks concentration risk: how much supply is held by top wallets
--- Key metric for Circle's reserve/distribution risk monitoring
-
--- Query 1: Top 50 USDC holders on Ethereum (current)
+-- Query 1: Top 20 USDC holders on Ethereum
+-- Visualization: Horizontal bar chart | address vs balance_usd
 SELECT
     address,
-    balance / 1e6 AS balance_usd,
-    balance / 1e6 / (SELECT SUM(balance) / 1e6 FROM tokens.erc20_balances WHERE token_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 AND balance > 0) * 100 AS pct_of_supply,
-    -- Label known addresses
-    CASE
-        WHEN address = 0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503 THEN 'Binance Hot Wallet'
-        WHEN address = 0x28C6c06298d514Db089934071355E5743bf21d60 THEN 'Binance'
-        WHEN address = 0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549 THEN 'Bitfinex'
-        WHEN address = 0xDFd5293D8e347dFe59E90eFd55b2956a1343963d THEN 'Coinbase'
-        WHEN address = 0xA7e8DDd6B1Cc2Be38E58F6D246Fd12bB8c250316 THEN 'Circle Treasury'
-        ELSE 'Unknown'
-    END AS label
-FROM tokens.erc20_balances
-WHERE token_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  -- USDC
-    AND balance > 0
-ORDER BY balance DESC
-LIMIT 50;
+    ROUND(balance_usd, 0) AS balance_usd
+FROM stablecoins_multichain.balances
+WHERE blockchain = 'ethereum'
+    AND token_symbol = 'USDC'
+    AND balance_usd > 0
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
+ORDER BY balance_usd DESC
+LIMIT 20
 
--- Query 2: Concentration metrics — Gini-style analysis
--- What % of supply is held by top 10, 50, 100 wallets?
+-- Query 2: USDC holder distribution tiers on Ethereum (concentration risk)
+-- Visualization: Pie chart | tier vs pct_of_total
 WITH ranked AS (
     SELECT
         address,
-        balance / 1e6 AS balance_usd,
-        ROW_NUMBER() OVER (ORDER BY balance DESC) AS rank
-    FROM tokens.erc20_balances
-    WHERE token_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-        AND balance > 0
-),
-total AS (
-    SELECT SUM(balance_usd) AS total_supply FROM ranked
+        balance_usd,
+        ROW_NUMBER() OVER (ORDER BY balance_usd DESC) AS rank
+    FROM stablecoins_multichain.balances
+    WHERE blockchain = 'ethereum'
+        AND token_symbol = 'USDC'
+        AND balance_usd > 0
+        AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
 )
 SELECT
-    'Top 10' AS tier,
-    SUM(r.balance_usd) AS tier_supply,
-    SUM(r.balance_usd) / t.total_supply * 100 AS pct_of_total
-FROM ranked r, total t
-WHERE r.rank <= 10
-UNION ALL
-SELECT
-    'Top 50',
-    SUM(r.balance_usd),
-    SUM(r.balance_usd) / t.total_supply * 100
-FROM ranked r, total t
-WHERE r.rank <= 50
-UNION ALL
-SELECT
-    'Top 100',
-    SUM(r.balance_usd),
-    SUM(r.balance_usd) / t.total_supply * 100
-FROM ranked r, total t
-WHERE r.rank <= 100
-UNION ALL
-SELECT
-    'All others',
-    SUM(r.balance_usd),
-    SUM(r.balance_usd) / t.total_supply * 100
-FROM ranked r, total t
-WHERE r.rank > 100;
+    CASE
+        WHEN rank <= 10 THEN 'Top 10'
+        WHEN rank <= 50 THEN 'Top 11-50'
+        WHEN rank <= 100 THEN 'Top 51-100'
+        WHEN rank <= 1000 THEN 'Top 101-1000'
+        ELSE 'All Others'
+    END AS tier,
+    COUNT(*) AS holder_count,
+    ROUND(SUM(balance_usd), 0) AS tier_supply_usd,
+    ROUND(SUM(balance_usd) * 100.0 / (SELECT SUM(balance_usd) FROM ranked), 2) AS pct_of_total
+FROM ranked
+GROUP BY 1
+ORDER BY MIN(rank)
 
--- Query 3: Large transfer alerts (>$10M USDC movements in last 7 days)
+-- Query 3: USDC holders by balance size bucket (retail vs whale)
+-- Visualization: Bar chart | size_bucket vs holder_count or total_balance_usd
 SELECT
-    block_time,
-    "from" AS sender,
-    "to" AS receiver,
-    value / 1e6 AS amount_usd,
-    tx_hash
-FROM erc20_ethereum.evt_Transfer
-WHERE contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  -- USDC
-    AND value / 1e6 > 10000000  -- > $10M
-    AND block_time >= NOW() - INTERVAL '7' DAY
-ORDER BY value DESC;
+    CASE
+        WHEN balance_usd < 100 THEN '1. Micro (<$100)'
+        WHEN balance_usd < 1000 THEN '2. Small ($100-$1K)'
+        WHEN balance_usd < 10000 THEN '3. Medium ($1K-$10K)'
+        WHEN balance_usd < 100000 THEN '4. Large ($10K-$100K)'
+        WHEN balance_usd < 1000000 THEN '5. Very Large ($100K-$1M)'
+        ELSE '6. Whale (>$1M)'
+    END AS size_bucket,
+    COUNT(*) AS holder_count,
+    ROUND(SUM(balance_usd), 0) AS total_balance_usd
+FROM stablecoins_multichain.balances
+WHERE blockchain = 'ethereum'
+    AND token_symbol = 'USDC'
+    AND balance_usd > 0
+    AND day = (SELECT MAX(day) FROM stablecoins_multichain.balances WHERE token_symbol = 'USDC')
+GROUP BY 1
+ORDER BY 1

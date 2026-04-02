@@ -1,70 +1,80 @@
 -- ⚠️ DUNE USAGE: Each query below must be run SEPARATELY on Dune Analytics.
--- Copy one query at a time (from one comment header to the next).
--- Dune does not support multiple statements in a single execution.
+-- Table: stablecoins_multichain.transfers
 
--- Stablecoin Adoption Signals — PSP, Card Network, and Settlement Platform Tracking
--- Monitors on-chain activity from known institutional wallets
--- Supplements manual tracking of partnerships and announcements
-
--- Query 1: USDC transfers involving known institutional addresses
--- This is a starting point — expand with verified addresses
-WITH known_institutions AS (
-    SELECT address, label FROM (VALUES
-        (0xA7e8DDd6B1Cc2Be38E58F6D246Fd12bB8c250316, 'Circle Treasury'),
-        (0x55FE002aefF02F77364de339a1292923A15844B8, 'Circle USDC Reserve'),
-        (0x5B541d54e79052B34d7dEf2a6ffC5b47b199F862, 'Stripe'),
-        (0x0D0707963952f2fBA59dD06f2b425ace40b492Fe, 'Gate.io'),
-        (0xDFd5293D8e347dFe59E90eFd55b2956a1343963d, 'Coinbase Prime'),
-        (0x28C6c06298d514Db089934071355E5743bf21d60, 'Binance'),
-        (0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549, 'Bitfinex')
-    ) AS t(address, label)
-)
-SELECT
-    date_trunc('day', e.block_time) AS day,
-    ki.label AS institution,
-    CASE
-        WHEN e."from" = ki.address THEN 'OUTFLOW'
-        ELSE 'INFLOW'
-    END AS direction,
-    SUM(e.value / 1e6) AS volume_usd,
-    COUNT(*) AS tx_count
-FROM erc20_ethereum.evt_Transfer e
-JOIN known_institutions ki ON (e."from" = ki.address OR e."to" = ki.address)
-WHERE e.contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48  -- USDC
-    AND e.block_time >= NOW() - INTERVAL '30' DAY
-    AND e.value / 1e6 > 100000  -- >$100K transfers only
-GROUP BY 1, 2, 3
-ORDER BY 1 DESC, volume_usd DESC;
-
--- Query 2: Circle CCTP (Cross-Chain Transfer Protocol) volume
--- Tracks USDC moving between chains via Circle's native bridge
--- Signals which chains are seeing institutional inflows
+-- Query 1: USDC daily transfer volume across ALL chains (last 30 days)
+-- Visualization: Line chart | X: day, Y: volume_usd
 SELECT
     date_trunc('day', block_time) AS day,
-    -- Source chain is Ethereum (this query), destination parsed from event
-    SUM(amount / 1e6) AS usdc_bridged_usd,
-    COUNT(*) AS bridge_tx_count
-FROM ethereum.logs
-WHERE contract_address = 0xBd3fa81B58Ba92a82136038B25aDec7066af3155  -- CCTP TokenMessenger on Ethereum
-    AND topic0 = 0x2fa9ca894982930190727e75500a97d8dc500233a5065e0f3126c48fbe0343c0  -- DepositForBurn event
-    AND block_time >= NOW() - INTERVAL '90' DAY
+    COUNT(*) AS tx_count,
+    ROUND(SUM(amount_usd), 0) AS volume_usd
+FROM stablecoins_multichain.transfers
+WHERE token_symbol = 'USDC'
+    AND block_time >= CURRENT_DATE - INTERVAL '30' DAY
+    AND amount_usd > 0
 GROUP BY 1
-ORDER BY 1;
+ORDER BY 1
 
--- Query 3: New USDC holder growth by chain (proxy for adoption)
--- Counts unique addresses receiving USDC for the first time
+-- Query 2: USDC transfer volume by chain (last 30 days)
+-- Shows where USDC is most actively used
+-- Visualization: Bar chart | X: blockchain, Y: volume_usd
 SELECT
-    date_trunc('week', first_received) AS week,
-    COUNT(*) AS new_usdc_holders
-FROM (
-    SELECT
-        "to" AS address,
-        MIN(block_time) AS first_received
-    FROM erc20_ethereum.evt_Transfer
-    WHERE contract_address = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-        AND block_time >= NOW() - INTERVAL '180' DAY
-    GROUP BY 1
-) first_transfers
-WHERE first_received >= NOW() - INTERVAL '180' DAY
+    blockchain,
+    COUNT(*) AS tx_count,
+    ROUND(SUM(amount_usd), 0) AS volume_usd
+FROM stablecoins_multichain.transfers
+WHERE token_symbol = 'USDC'
+    AND block_time >= CURRENT_DATE - INTERVAL '30' DAY
+    AND amount_usd > 0
 GROUP BY 1
-ORDER BY 1;
+ORDER BY 3 DESC
+LIMIT 10
+
+-- Query 3: USDC transfers by size bucket (retail vs institutional)
+-- Visualization: Stacked bar or pie chart
+SELECT
+    CASE
+        WHEN amount_usd < 100 THEN '1. Micro (<$100)'
+        WHEN amount_usd < 1000 THEN '2. Small ($100-$1K)'
+        WHEN amount_usd < 10000 THEN '3. Medium ($1K-$10K)'
+        WHEN amount_usd < 100000 THEN '4. Large ($10K-$100K)'
+        WHEN amount_usd < 1000000 THEN '5. Very Large ($100K-$1M)'
+        ELSE '6. Institutional (>$1M)'
+    END AS size_bucket,
+    COUNT(*) AS tx_count,
+    ROUND(SUM(amount_usd), 0) AS total_volume_usd
+FROM stablecoins_multichain.transfers
+WHERE blockchain = 'ethereum'
+    AND token_symbol = 'USDC'
+    AND block_time >= CURRENT_DATE - INTERVAL '30' DAY
+    AND amount_usd > 0
+GROUP BY 1
+ORDER BY 1
+
+-- Query 4: Large USDC transfers (>$10M) in last 7 days — whale alerts
+-- Visualization: Table
+SELECT
+    block_time,
+    blockchain,
+    "from" AS sender,
+    "to" AS receiver,
+    ROUND(amount_usd, 0) AS amount_usd,
+    tx_hash
+FROM stablecoins_multichain.transfers
+WHERE token_symbol = 'USDC'
+    AND amount_usd > 10000000
+    AND block_time >= CURRENT_DATE - INTERVAL '7' DAY
+ORDER BY amount_usd DESC
+LIMIT 50
+
+-- Query 5: USDC vs USDT daily volume comparison across all chains
+-- Visualization: Dual line chart | X: day, Y: volume, series: token_symbol
+SELECT
+    date_trunc('day', block_time) AS day,
+    token_symbol,
+    ROUND(SUM(amount_usd), 0) AS volume_usd
+FROM stablecoins_multichain.transfers
+WHERE token_symbol IN ('USDC', 'USDT')
+    AND block_time >= CURRENT_DATE - INTERVAL '30' DAY
+    AND amount_usd > 0
+GROUP BY 1, 2
+ORDER BY 1, 2
