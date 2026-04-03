@@ -2,8 +2,6 @@
 
 > A market intelligence platform that transforms fragmented stablecoin market signals into decision-grade insights — covering market share dynamics, chain migration, peg stability, competitive positioning, regulatory tracking, and early warning systems.
 
-Built to demonstrate the analytical capability described in Circle's Market & Ecosystem Intelligence role: turning complex data across stablecoins, payments networks, and regulation into executive-ready outputs.
-
 **Live Dashboard:** [Stablecoin Market Intelligence on Dune Analytics](https://dune.com/enceladus68/stablecoin-market-intel)
 
 ---
@@ -15,7 +13,7 @@ The platform monitors the stablecoin ecosystem across six intelligence dimension
 1. **Market share analysis** — USDC vs USDT dominance shifts, 90-day growth comparisons, and market structure signals
 2. **Chain migration detection** — Where is stablecoin supply flowing? Which chains are gaining (Solana, Base, TON) and which are losing share (BSC, Polygon)?
 3. **Peg stability scoring** — Real-time peg health with a 0-100 scoring system, deviation tracking in basis points, and depeg event history
-4. **Competitor scorecards** — USDT, DAI, USDe, PYUSD, FDUSD, BUIDL scored on reserve transparency, regulatory standing, chain coverage, and threat level
+4. **Competitor scorecards** — USDT, USDC, DAI, USDe, PYUSD, FDUSD, BUIDL scored on reserve transparency, regulatory standing, chain coverage, and threat level
 5. **Early warning triggers** — Automated alerts for market share shifts, peg instability, chain concentration risk, regulatory changes, and competitor traction
 6. **Regulatory tracker** — 12 jurisdictions mapped: US (GENIUS Act), EU (MiCA), Singapore (MAS), UK, Hong Kong, UAE, Japan, Brazil, India, Canada, Australia, South Korea
 
@@ -71,25 +69,25 @@ The `/dune_queries` directory contains production-ready SQL for Dune Analytics:
 | Query | What it tracks |
 |---|---|
 | `usdc_supply.sql` | USDC supply by chain, daily mint/burn, cross-chain distribution |
-| `peg_deviation.sql` | Hourly peg prices from DEX trades, depeg event detection |
-| `whale_concentration.sql` | Top 50 holders, Gini-style concentration, large transfer alerts |
-| `market_share.sql` | Weekly USDC vs USDT dominance, chain migration, DEX volume split |
-| `adoption_signals.sql` | Institutional wallet flows, CCTP bridge volume, new holder growth |
+| `peg_deviation.sql` | Peg prices from DEX trades and balance data, depeg event detection |
+| `whale_concentration.sql` | Top holders, Gini-style concentration tiers, large transfer alerts |
+| `market_share.sql` | Stablecoin dominance, USDC vs USDT per chain, market structure |
+| `adoption_signals.sql` | Transfer volume by chain, size bucket analysis, whale alerts |
 
-All queries use Dune's standard tables (`stablecoins_multichain.balances`, `stablecoins_multichain.transfers`, `prices.usd`) providing full cross-chain coverage including Ethereum, Solana, Tron, Base, Arbitrum, and 30+ EVM chains.
+All queries use Dune's `stablecoins_multichain.balances` and `stablecoins_multichain.transfers` tables, providing full cross-chain coverage including Ethereum, Solana, Tron, Base, Arbitrum, and 30+ chains.
 
 ---
 
 ## Live Dune Dashboard
 
-The [Stablecoin Market Intelligence dashboard](https://dune.com/enceladus68/stablecoin-market-intel) on Dune Analytics includes 6 interactive visualizations:
+The [Stablecoin Market Intelligence dashboard](https://dune.com/enceladus68/stablecoin-market-intel) on Dune Analytics includes interactive visualizations covering:
 
-1. **USDC Supply by Chain** — Bar chart showing USDC distribution across Ethereum, Solana, Base, Arbitrum, Polygon, and more
-2. **Stablecoin Market Share** — Pie chart of USDC vs USDT vs DAI vs USDe dominance
-3. **USDC vs USDT by Chain** — Which stablecoin dominates on each chain
-4. **Top 20 USDC Holders** — Whale concentration on Ethereum
-5. **Holder Distribution** — Breakdown by size bucket (micro to whale)
-6. **USDC vs USDT Overview** — Total supply, chains, and holder comparison
+- **USDC Supply by Chain** — Distribution across Ethereum, Solana, Base, Arbitrum, Polygon, and more
+- **Stablecoin Market Share** — USDC vs USDT vs DAI vs USDe dominance
+- **USDC vs USDT by Chain** — Which stablecoin dominates on each chain
+- **Top USDC Holders** — Whale concentration on Ethereum
+- **Holder Distribution** — Breakdown by size bucket (micro to whale)
+- **Supply & Holder Overview** — Total supply, chains, and holder comparison
 
 All data is live and refreshed from on-chain sources.
 
@@ -103,7 +101,7 @@ Run `python -m engine.report_generator` to produce a structured markdown report 
 - Market share dynamics table
 - Chain distribution with migration signals
 - Peg stability scorecards (0-100 scoring)
-- Top 5 competitor scorecards vs USDC
+- Competitor scorecards with threat assessment
 - Early warning triggers with recommended actions
 - 12-jurisdiction regulatory tracker
 
@@ -125,8 +123,8 @@ stablecoin-intel/
 │   ├── usdc_supply.sql           ← USDC supply by chain + mint/burn
 │   ├── peg_deviation.sql         ← Peg tracking from DEX data
 │   ├── whale_concentration.sql   ← Top holders + concentration metrics
-│   ├── market_share.sql          ← USDC vs USDT dominance over time
-│   └── adoption_signals.sql      ← Institutional flows + CCTP + holder growth
+│   ├── market_share.sql          ← Stablecoin dominance over time
+│   └── adoption_signals.sql      ← Transfer flows + adoption metrics
 ├── reports/                      ← Auto-generated intelligence reports
 ├── data/                         ← Cached API responses
 └── docs/
@@ -148,7 +146,7 @@ stablecoin-intel/
 - LOW: <2% dominance
 
 ### Early Warning Triggers
-- Market share shift: USDC growth trailing USDT by >3pp over 90 days
+- Market share shift: Growth differential >3pp over 90 days
 - Peg instability: Any stablecoin with stability score <70
 - Chain concentration: Single chain holding >40% of total supply
 - Regulatory change: Frameworks with 2026 implementation dates
@@ -166,4 +164,4 @@ stablecoin-intel/
 
 ---
 
-*Built as a portfolio project demonstrating market intelligence, on-chain analytics, and competitive analysis capability for the stablecoin payments ecosystem.*
+*Product case study demonstrating market intelligence, on-chain analytics, and competitive analysis capability for the stablecoin ecosystem.*
