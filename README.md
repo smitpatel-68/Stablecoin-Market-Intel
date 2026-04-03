@@ -1,43 +1,169 @@
-# BBC News Dataset - Classification
-## Description
+# 🔍 Stablecoin Market & Ecosystem Intelligence
 
-This news dataset is a collection of 2225 documents from the BBC news website corresponding to stories in five topical areas from 2004-2005.
+> A market intelligence platform that transforms fragmented stablecoin market signals into decision-grade insights — covering market share dynamics, chain migration, peg stability, competitive positioning, regulatory tracking, and early warning systems.
 
-## File Format
+Built to demonstrate the analytical capability described in Circle's Market & Ecosystem Intelligence role: turning complex data across stablecoins, payments networks, and regulation into executive-ready outputs.
 
+**Live Dashboard:** [Stablecoin Market Intelligence on Dune Analytics](https://dune.com/enceladus68/stablecoin-market-intel)
 
-## Entries
-texts 2,225  
+---
 
+## What This Does
 
-## File Format
-text - csv  
+The platform monitors the stablecoin ecosystem across six intelligence dimensions:
 
-| Column | Description        |
-| ----- | ------------------ |
-|type | one of the following labels: business, entertainment, politics, sport, tech |
-|news| the news content |
+1. **Market share analysis** — USDC vs USDT dominance shifts, 90-day growth comparisons, and market structure signals
+2. **Chain migration detection** — Where is stablecoin supply flowing? Which chains are gaining (Solana, Base, TON) and which are losing share (BSC, Polygon)?
+3. **Peg stability scoring** — Real-time peg health with a 0-100 scoring system, deviation tracking in basis points, and depeg event history
+4. **Competitor scorecards** — USDT, DAI, USDe, PYUSD, FDUSD, BUIDL scored on reserve transparency, regulatory standing, chain coverage, and threat level
+5. **Early warning triggers** — Automated alerts for market share shifts, peg instability, chain concentration risk, regulatory changes, and competitor traction
+6. **Regulatory tracker** — 12 jurisdictions mapped: US (GENIUS Act), EU (MiCA), Singapore (MAS), UK, Hong Kong, UAE, Japan, Brazil, India, Canada, Australia, South Korea
 
-## Example
-<pre>
-"China had role in Yukos split-up
- 
- China lent Russia $6bn (£3.2bn) to help the Russian government renationalise the key Yuganskneftegas unit of oil group Yukos, it has been revealed.
- 
- The Kremlin said on Tuesday that the $6bn which Russian state bank VEB lent state-owned Rosneft to help buy Yugansk in turn came from Chinese banks. The revelation came as the Russian government said Rosneft had signed a long-term oil supply deal with China. The deal sees Rosneft receive $6bn in credits from China's CNPC.
- 
- According to Russian newspaper Vedomosti, these credits would be used to pay off the loans Rosneft received to finance the purchase of Yugansk. Reports said CNPC had been offered 20% of Yugansk in return for providing finance but the company opted for a long-term oil supply deal instead. Analysts said one factor that might have influenced the Chinese decision was the possibility of litigation from Yukos, Yugansk's former owner, if CNPC had become a shareholder. Rosneft and VEB declined to comment. ""The two companies [Rosneft and CNPC] have agreed on the pre-payment for long-term deliveries,"" said Russian oil official Sergei Oganesyan. ""There is nothing unusual that the pre-payment is for five to six years.""
- 
- The announcements help to explain how Rosneft, a medium-sized, indebted, and relatively unknown firm, was able to finance its surprise purchase of Yugansk. Yugansk was sold for $9.3bn in an auction last year to help Yukos pay off part of a $27bn bill in unpaid taxes and fines.
- 
- The embattled Russian oil giant had previously filed for bankruptcy protection in a US court in an attempt to prevent the forced sale of its main production arm. But Yugansk was sold to a little known shell company which in turn was bought by Rosneft. Yukos claims its downfall was punishment for the political ambitions of its founder Mikhail Khodorkovsky. Once the country's richest man, Mr Khodorkovsky is on trial for fraud and tax evasion.
- 
- The deal between Rosneft and CNPC is seen as part of China's desire to secure long-term oil supplies to feed its booming economy. China's thirst for products such as crude oil, copper and steel has helped pushed global commodity prices to record levels. ""Clearly the Chinese are trying to get some leverage [in Russia],"" said Dmitry Lukashov, an analyst at brokerage Aton. ""They understand property rights in Russia are not the most important rights, and they are more interested in guaranteeing supplies."" ""If the price of oil is fixed under the deal, which is unlikely, it could be very profitable for the Chinese,"" Mr Lukashov continued. ""And Rosneft is in desperate need of cash, so it's a good deal for them too.""
-",business
-</pre>
+---
 
+## Quick Start
 
+```bash
+# Run the full intelligence analysis
+python -m engine.market_intelligence
 
+# Generate an executive-ready markdown report
+python -m engine.report_generator
 
+# Fetch live data from DefiLlama (requires internet)
+python engine/data_fetcher.py
+```
 
+The analysis engine works out of the box with curated sample data (sourced from real DefiLlama snapshots). When connected to the internet, the data fetcher pulls live supply, chain distribution, and pricing data.
 
+---
+
+## Sample Output
+
+Running `python -m engine.market_intelligence` produces:
+
+```
+SECTION 1: MARKET SHARE ANALYSIS
+  Total stablecoin supply:     $235,400,000,000
+  USDT supply:                 $144,200,000,000 (61.3%)
+  USDC supply:                 $60,800,000,000 (25.8%)
+  
+  90-day growth:
+    USDC:                      +16.9%
+    USDT:                      +12.7%
+  
+  Signal: USDC_GAINING
+  Insight: USDC is growing faster than USDT (16.9% vs 12.7%)...
+
+SECTION 5: EARLY WARNING TRIGGERS
+  🔴 [CRITICAL] PEG_INSTABILITY
+    TUSD peg stability score: 0/100. 1 depeg events in 90 days.
+    Worst deviation: 1.5%. Current price: $0.9985
+    Action: Monitor TUSD reserve disclosures...
+```
+
+---
+
+## Dune SQL Queries
+
+The `/dune_queries` directory contains production-ready SQL for Dune Analytics:
+
+| Query | What it tracks |
+|---|---|
+| `usdc_supply.sql` | USDC supply by chain, daily mint/burn, cross-chain distribution |
+| `peg_deviation.sql` | Hourly peg prices from DEX trades, depeg event detection |
+| `whale_concentration.sql` | Top 50 holders, Gini-style concentration, large transfer alerts |
+| `market_share.sql` | Weekly USDC vs USDT dominance, chain migration, DEX volume split |
+| `adoption_signals.sql` | Institutional wallet flows, CCTP bridge volume, new holder growth |
+
+All queries use Dune's standard tables (`stablecoins_multichain.balances`, `stablecoins_multichain.transfers`, `prices.usd`) providing full cross-chain coverage including Ethereum, Solana, Tron, Base, Arbitrum, and 30+ EVM chains.
+
+---
+
+## Live Dune Dashboard
+
+The [Stablecoin Market Intelligence dashboard](https://dune.com/enceladus68/stablecoin-market-intel) on Dune Analytics includes 6 interactive visualizations:
+
+1. **USDC Supply by Chain** — Bar chart showing USDC distribution across Ethereum, Solana, Base, Arbitrum, Polygon, and more
+2. **Stablecoin Market Share** — Pie chart of USDC vs USDT vs DAI vs USDe dominance
+3. **USDC vs USDT by Chain** — Which stablecoin dominates on each chain
+4. **Top 20 USDC Holders** — Whale concentration on Ethereum
+5. **Holder Distribution** — Breakdown by size bucket (micro to whale)
+6. **USDC vs USDT Overview** — Total supply, chains, and holder comparison
+
+All data is live and refreshed from on-chain sources.
+
+---
+
+## Intelligence Reports
+
+Run `python -m engine.report_generator` to produce a structured markdown report with:
+
+- Executive summary with key metrics and critical alerts
+- Market share dynamics table
+- Chain distribution with migration signals
+- Peg stability scorecards (0-100 scoring)
+- Top 5 competitor scorecards vs USDC
+- Early warning triggers with recommended actions
+- 12-jurisdiction regulatory tracker
+
+Reports are saved to `/reports` with timestamps.
+
+---
+
+## Repo Structure
+
+```
+stablecoin-intel/
+├── README.md
+├── engine/
+│   ├── __init__.py
+│   ├── data_fetcher.py           ← Live data from DefiLlama API
+│   ├── market_intelligence.py    ← Core analysis engine (6 sections)
+│   └── report_generator.py       ← Executive-ready markdown reports
+├── dune_queries/
+│   ├── usdc_supply.sql           ← USDC supply by chain + mint/burn
+│   ├── peg_deviation.sql         ← Peg tracking from DEX data
+│   ├── whale_concentration.sql   ← Top holders + concentration metrics
+│   ├── market_share.sql          ← USDC vs USDT dominance over time
+│   └── adoption_signals.sql      ← Institutional flows + CCTP + holder growth
+├── reports/                      ← Auto-generated intelligence reports
+├── data/                         ← Cached API responses
+└── docs/
+    └── methodology.md            ← Scoring models + data source documentation
+```
+
+---
+
+## Methodology
+
+### Peg Stability Score (0-100)
+- Base: 100 (perfect peg)
+- Deductions: current deviation (5 pts per basis point), event count (10 pts each), worst event severity (20 pts per %)
+- Risk bands: LOW (90-100), MEDIUM (70-89), HIGH (50-69), CRITICAL (0-49)
+
+### Competitor Threat Assessment
+- HIGH: >50% dominance OR (>5% dominance + strong/moderate regulatory standing)
+- MEDIUM: >2% dominance
+- LOW: <2% dominance
+
+### Early Warning Triggers
+- Market share shift: USDC growth trailing USDT by >3pp over 90 days
+- Peg instability: Any stablecoin with stability score <70
+- Chain concentration: Single chain holding >40% of total supply
+- Regulatory change: Frameworks with 2026 implementation dates
+- Competitor traction: New entrants exceeding $400M supply
+
+---
+
+## Data Sources
+
+| Source | What | Access |
+|---|---|---|
+| DefiLlama Stablecoins API | Supply, chain distribution, prices | Free, no API key |
+| Dune Analytics | On-chain transfers, DEX volume, holder data | Free tier (limited), API key for automation |
+| Manual monitoring | Regulatory developments, partnership announcements | Curated in regulatory tracker |
+
+---
+
+*Built as a portfolio project demonstrating market intelligence, on-chain analytics, and competitive analysis capability for the stablecoin payments ecosystem.*
